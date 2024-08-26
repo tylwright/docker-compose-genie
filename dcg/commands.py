@@ -6,7 +6,7 @@ from datetime import datetime
 from rich.console import Console
 from rich.table import Table
 from rich.tree import Tree
-from .utils import load_deployments, save_deployments, start_deployment, stop_deployment, get_compose_file_path
+from .utils import load_deployments, save_deployments, get_compose_file_path, manage_deployment
 
 @click.command()
 @click.argument("name")
@@ -29,7 +29,7 @@ def add(name, file_path, start):
         save_deployments(deployments)
         click.echo(f"Deployment {name} added.")
         if start:
-            start_deployment(name, file_path)
+            manage_deployment(name, "start")
 
 @click.command()
 @click.argument("name")
@@ -53,8 +53,7 @@ def remove(name, stop):
 
     if deployment_to_remove:
         if stop:
-            file_path = deployment_to_remove[name]["file_path"]
-            stop_deployment(name, file_path)
+            manage_deployment(name, "stop")
         
         deployments.remove(deployment_to_remove)
         save_deployments(deployments)
@@ -95,10 +94,9 @@ def update(ctx, name, start, restart):
             # Pull new images and bring up the updated deployment
             subprocess.run(["docker", "compose", "-f", compose_file, "pull"])
             if restart:
-                stop_deployment(name, file_path)
-                start_deployment(name, file_path)
+                manage_deployment(name, "restart")
             elif start:
-                start_deployment(name, file_path)
+                manage_deployment(name, "start")
             else:
                 click.echo(f"Deployment {name} updated without starting or restarting.")
         else:
@@ -115,15 +113,7 @@ def up(name):
 
     NAME is the name of the deployment (ex. Plex).
     """
-    deployments = load_deployments()
-
-    for deployment in deployments:
-        if name in deployment:
-            file_path = deployment[name].get("file_path", "N/A")
-            start_deployment(name, file_path)
-            break
-    else:
-        click.echo(f"Deployment {name} not found.")
+    manage_deployment(name, "start")
 
 @click.command()
 @click.argument("name")
@@ -134,15 +124,7 @@ def down(name):
 
     NAME is the name of the deployment (ex. Plex).
     """
-    deployments = load_deployments()
-
-    for deployment in deployments:
-        if name in deployment:
-            file_path = deployment[name].get("file_path", "N/A")
-            stop_deployment(name, file_path)
-            break
-    else:
-        click.echo(f"Deployment {name} not found.")
+    manage_deployment(name, "stop")
 
 @click.command()
 @click.argument("name")
@@ -153,16 +135,7 @@ def restart(name):
 
     NAME is the name of the deployment (ex. Plex).
     """
-    deployments = load_deployments()
-
-    for deployment in deployments:
-        if name in deployment:
-            file_path = deployment[name].get("file_path", "N/A")
-            stop_deployment(name, file_path)
-            start_deployment(name, file_path)
-            break
-    else:
-        click.echo(f"Deployment {name} not found.")
+    manage_deployment(name, "restart")
 
 @click.command()
 @click.option('--show-file-path', '-s', is_flag=True, help='Show directory where docker-compose.yaml is located.')
@@ -224,8 +197,7 @@ def stop_all(force):
     if force or click.confirm("Are you sure you want to stop all deployments?"):
         deployments = load_deployments()
         for name, data in deployments.items():
-            file_path = data["file_path"]
-            stop_deployment(name, file_path)
+            manage_deployment(name, "stop")
     else:
         click.echo("Action canceled.")
 
@@ -238,8 +210,7 @@ def start_all(force):
     if force or click.confirm("Are you sure you want to start all deployments?"):
         deployments = load_deployments()
         for name, data in deployments.items():
-            file_path = data["file_path"]
-            start_deployment(name, file_path)
+            manage_deployment(name, "start")
     else:
         click.echo("Action canceled.")
 

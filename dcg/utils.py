@@ -32,6 +32,29 @@ def get_compose_file_path(file_path):
     else:
         return None
 
+def manage_deployment(name, action):
+    """
+    Manage deployment with the given action.
+    
+    :param name: The name of the deployment.
+    :param action: The action to perform (start, stop, restart).
+    """
+    deployments = load_deployments()
+
+    for deployment in deployments:
+        if name in deployment:
+            file_path = deployment[name].get("file_path", "N/A")
+            if action == "start":
+                start_deployment(name, file_path)
+            elif action == "stop":
+                stop_deployment(name, file_path)
+            elif action == "restart":
+                stop_deployment(name, file_path)
+                start_deployment(name, file_path)
+            break
+    else:
+        click.echo(f"Deployment {name} not found.")
+
 def start_deployment(name, file_path):
     """Helper function to start a deployment."""
     print(f"Attempting to start {name}...")
